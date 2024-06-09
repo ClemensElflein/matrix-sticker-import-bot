@@ -5,6 +5,8 @@ jobs:
   build-backend:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
         id: buildx
