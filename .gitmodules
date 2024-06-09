@@ -1,0 +1,6 @@
+[submodule "stickerpicker"]
+	path = stickerpicker
+	url = https://github.com/maunium/stickerpicker.git
+[submodule "mstickereditor"]
+	path = mstickereditor
+	url = https://github.com/LuckyTurtleDev/mstickereditor.git
