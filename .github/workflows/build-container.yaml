@@ -7,6 +7,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
         id: buildx

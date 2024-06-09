@@ -29,8 +29,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY ./ /build
 
 WORKDIR /build
-# Fetch submodules
-RUN git submodule update --init --recursive
 
 # Build and install mstickereditor
 RUN cd mstickereditor && cargo build --locked --release
