@@ -5,7 +5,7 @@ WORKDIR /build
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y libwebp-dev librlottie-dev ffmpeg \
+    apt-get install --no-install-recommends -y libwebp-dev librlottie-dev ffmpeg \
     libavutil-dev libavformat-dev libavfilter-dev libavdevice-dev nginx && \
     rm -rf /var/lib/apt/lists/*
 
