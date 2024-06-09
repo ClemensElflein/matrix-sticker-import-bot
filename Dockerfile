@@ -1,16 +1,31 @@
-FROM ubuntu:latest
+FROM python:3.12-slim-bullseye as base
 LABEL authors="Clemens Elflein"
 
 WORKDIR /build
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y wget tar libwebp-dev librlottie-dev ffmpeg rust-all clang \
-    python-is-python3 python3 python3-pip git \
-    pkg-config libavutil-dev libavformat-dev libavfilter-dev libavdevice-dev lld nginx && \
+    apt-get install -y libwebp-dev librlottie-dev ffmpeg \
+    libavutil-dev libavformat-dev libavfilter-dev libavdevice-dev nginx && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy repo
+# Install pip requirements.txt
+COPY ./sticker-bot/requirements.txt .
+RUN pip install -r requirements.txt && rm requirements.txt
+
+FROM base as build
+
+# Install build  dependencies
+RUN apt-get update && \
+    apt-get install -y clang git \
+    pkg-config lld curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+# Get Rust
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 COPY ./ /build
 
 WORKDIR /build
@@ -18,16 +33,15 @@ WORKDIR /build
 RUN git submodule update --init --recursive
 
 # Build and install mstickereditor
-RUN cd mstickereditor && cargo install --locked mstickereditor
+RUN cd mstickereditor && cargo build --locked --release
 
-# Install python dependencies for sticker-bot
-RUN cd sticker-bot && pip install --break-system-packages -r requirements.txt
+FROM base as runtime
 
-# Copy the web folder to /app/web (this will be hosted for the picker)
-RUN mkdir -p /app/web && cp -r stickerpicker/web/. /app/web/
-
-# Copy nginx config
-RUN cp -r config/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy the mstickereditor binary
+COPY --from=build /build/mstickereditor/target/release/mstickereditor /root/.cargo/bin/mstickereditor
+COPY --from=build /build/stickerpicker/web /app/web
+COPY --from=build /build/config/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /build/sticker-bot /app/sticker-bot
 
 WORKDIR /app
-ENTRYPOINT ["bash", "-c", "service nginx start; python /build/sticker-bot/sticker-bot.py"]
+ENTRYPOINT ["bash", "-c", "service nginx start; python /app/sticker-bot/sticker-bot.py"]
