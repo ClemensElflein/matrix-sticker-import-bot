@@ -35,23 +35,6 @@ async def echo(room, message):
         await bot.api.send_text_message(room.room_id, "Go Away.")
         return
 
-    # Check, if pack_dir exists for this user. If not, create it
-    user_pack_path = os.path.join(pack_target_dir, match.event.sender)
-    print("user_pack_path", user_pack_path)
-    if not os.path.exists(user_pack_path):
-        print("creating user_pack_path at ", user_pack_path)
-        os.makedirs(user_pack_path)
-
-    if not len(match.args()) == 1:
-        await bot.api.send_text_message(room.room_id, "You need to provide exactly one argument.")
-        return
-
-    arg = match.args()[0]
-    if not arg.startswith("https://t.me/addstickers/"):
-        await bot.api.send_text_message(room.room_id,
-                                        "You need to provide a URL starting with https://t.me/addstickers/"
-                                        )
-        return
     if match.command("help"):
         await bot.api.send_text_message(room.room_id,
                                         "Use this bot to import Telegram sticker packs.\nE.g.: `!addsticker https://t.me/addstickers/hotcherry`."
@@ -59,6 +42,23 @@ async def echo(room, message):
         return
 
     if match.command("addpack"):
+        # Check, if pack_dir exists for this user. If not, create it
+        user_pack_path = os.path.join(pack_target_dir, match.event.sender)
+        print("user_pack_path", user_pack_path)
+        if not os.path.exists(user_pack_path):
+            print("creating user_pack_path at ", user_pack_path)
+            os.makedirs(user_pack_path)
+
+        if not len(match.args()) == 1:
+            await bot.api.send_text_message(room.room_id, "You need to provide exactly one argument.")
+            return
+
+        arg = match.args()[0]
+        if not arg.startswith("https://t.me/addstickers/"):
+            await bot.api.send_text_message(room.room_id,
+                                            "You need to provide a URL starting with https://t.me/addstickers/"
+                                            )
+            return
         await bot.api.send_text_message(room.room_id, "Starting Import")
         proc = await asyncio.create_subprocess_exec(mstickereditorbinary, "import", arg,
                                                     cwd=user_pack_path,
