@@ -55,7 +55,7 @@ Replace `/path/to/sticker-packs` and `/path/to/config.toml` with the actual path
     "stickerpicker": {
       "content": {
         "type": "m.stickerpicker",
-        "url": "http://example.com:8080/stickerpicker/@you:example.com?theme=$theme",
+        "url": "http://example.com:8080/stickerpicker/@you:example.com/?theme=$theme",
         "name": "Stickerpicker",
         "creatorUserId": "@you:example.com",
         "data": {}
