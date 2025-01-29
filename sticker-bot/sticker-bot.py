@@ -37,7 +37,7 @@ async def echo(room, message):
 
     if match.command("help"):
         await bot.api.send_text_message(room.room_id,
-                                        "Use this bot to import Telegram sticker packs.\nE.g.: `!addsticker https://t.me/addstickers/hotcherry`."
+                                        "Use this bot to import Telegram sticker packs.\nE.g.: `!addpack https://t.me/addstickers/hotcherry`."
                                         )
         return
 
