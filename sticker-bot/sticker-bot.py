@@ -2,6 +2,8 @@ import asyncio
 import logging
 import signal
 import sys
+import json
+import tempfile
 from typing import Optional
 
 import simplematrixbotlib as botlib
@@ -208,6 +210,90 @@ async def echo(room, message):
                     await bot.api.send_text_message(
                         room.room_id, f'Index Created.\n\nResult:\n\n[stdout]\n{stdout_str}\n[stderr]\n{stderr_str}'
                     )
+                    
+                    # Download thumbnails
+                    try:
+                        # Extract pack name from URL
+                        pack_name = arg.split('/')[-1]
+                        pack_json_path = os.path.join(user_pack_path, f"{pack_name}.json")
+                        
+                        # Create temporary JSON config file
+                        matrix_config = {
+                            "homeserver": config["matrix"]["homeserver_url"],
+                            "access_token": config["matrix"]["access_token"]
+                        }
+                        
+                        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_config:
+                            json.dump(matrix_config, temp_config)
+                            temp_config_path = temp_config.name
+                        
+                        logger.info(f"Starting thumbnail download for {pack_json_path}")
+                        await bot.api.send_text_message(room.room_id, "Downloading thumbnails...")
+                        
+                        # Run sticker-download-thumbnails command
+                        sticker_download_cmd = "sticker-download-thumbnails"
+                        proc = await create_subprocess_with_tracking(sticker_download_cmd, 
+                                                                f"--config={temp_config_path}", 
+                                                                pack_json_path,
+                                                                stdout=asyncio.subprocess.PIPE,
+                                                                stderr=asyncio.subprocess.PIPE)
+                        
+                        try:
+                            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=SUBPROCESS_TIMEOUT)
+                            
+                            # Unregister the process since it's completed
+                            unregister_process(proc)
+                            
+                            # Clean up temporary config file
+                            os.unlink(temp_config_path)
+                            
+                            # Truncate output if too large
+                            stdout_str = stdout.decode(errors='replace')
+                            stderr_str = stderr.decode(errors='replace')
+                            
+                            if len(stdout_str) > MAX_OUTPUT_SIZE:
+                                stdout_str = stdout_str[:MAX_OUTPUT_SIZE] + "\n... (output truncated)"
+                            if len(stderr_str) > MAX_OUTPUT_SIZE:
+                                stderr_str = stderr_str[:MAX_OUTPUT_SIZE] + "\n... (output truncated)"
+                            
+                            if proc.returncode != 0:
+                                logger.error(f"Thumbnail download failed with return code {proc.returncode}")
+                                await bot.api.send_text_message(
+                                    room.room_id, f'Thumbnail download failed with return code {proc.returncode}.\n\n[stdout]\n{stdout_str}\n[stderr]\n{stderr_str}'
+                                )
+                            else:
+                                await bot.api.send_text_message(
+                                    room.room_id, f'Thumbnails downloaded successfully.\n\nResult:\n\n[stdout]\n{stdout_str}\n[stderr]\n{stderr_str}'
+                                )
+                                
+                        except asyncio.TimeoutError:
+                            logger.error(f"Thumbnail download timed out after {SUBPROCESS_TIMEOUT} seconds")
+                            proc.kill()
+                            # Unregister the process after killing it
+                            unregister_process(proc)
+                            # Clean up temporary config file
+                            os.unlink(temp_config_path)
+                            await bot.api.send_text_message(
+                                room.room_id, f'Thumbnail download timed out after {SUBPROCESS_TIMEOUT} seconds.'
+                            )
+                            
+                    except Exception as e:
+                        logger.error(f"Error during thumbnail download: {str(e)}")
+                        # Make sure to unregister the process if it exists
+                        if 'proc' in locals() and proc is not None:
+                            try:
+                                if proc.returncode is None:  # Process is still running
+                                    proc.kill()
+                                unregister_process(proc)
+                            except Exception as cleanup_error:
+                                logger.error(f"Error during process cleanup: {str(cleanup_error)}")
+                        # Clean up temporary config file if it exists
+                        if 'temp_config_path' in locals():
+                            try:
+                                os.unlink(temp_config_path)
+                            except:
+                                pass
+                        await bot.api.send_text_message(room.room_id, f"Error during thumbnail download: {str(e)}")
                     
                 except asyncio.TimeoutError:
                     logger.error(f"Index creation process timed out after {SUBPROCESS_TIMEOUT} seconds")
