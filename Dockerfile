@@ -37,9 +37,12 @@ FROM base as runtime
 
 # Copy the mstickereditor binary
 COPY --from=build /build/mstickereditor/target/release/mstickereditor /root/.cargo/bin/mstickereditor
-COPY --from=build /build/stickerpicker/web /app/web
+COPY --from=build /build/stickerpicker /app/stickerpicker
 COPY --from=build /build/config/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /build/sticker-bot /app/sticker-bot
+
+# Install stickerpicker library
+RUN pip install /app/stickerpicker
 
 WORKDIR /app
 ENTRYPOINT ["bash", "-c", "service nginx start; python /app/sticker-bot/sticker-bot.py"]
